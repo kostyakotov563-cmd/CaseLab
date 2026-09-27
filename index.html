@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CaseLab — открывай кейсы, собирай коллекцию</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  :root{
+    --bg:#0a0b0f; --panel:#12141c; --panel2:#181b26;
+    --line:#232838; --txt:#e8eaf2; --dim:#8b92a8;
+    --neon:#7c5cff; --neon2:#00e0ff;
+    --common:#8b92a8; --rare:#3b82f6; --epic:#a855f7; --legend:#f59e0b; --mythic:#ef4444;
+  }
+  body{ background:var(--bg); color:var(--txt); font-family:'Segoe UI',system-ui,sans-serif; min-height:100vh; }
+  a{ color:inherit; text-decoration:none; }
+
+  /* HEADER */
+  header{ position:sticky; top:0; z-index:50; background:rgba(10,11,15,.85); backdrop-filter:blur(12px); border-bottom:1px solid var(--line); }
+  .nav{ max-width:1200px; margin:0 auto; display:flex; align-items:center; gap:20px; padding:14px 20px; }
+  .logo{ font-weight:800; font-size:20px; letter-spacing:.5px; }
+  .logo span{ background:linear-gradient(90deg,var(--neon),var(--neon2)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .nav-links{ display:flex; gap:18px; margin-left:auto; font-size:14px; color:var(--dim); }
+  .nav-links button{ background:none; border:none; color:var(--dim); cursor:pointer; font-size:14px; padding:6px 10px; border-radius:8px; transition:.2s; font-family:inherit; }
+  .nav-links button:hover, .nav-links button.active{ color:var(--txt); background:var(--panel2); }
+  .balance{ display:flex; align-items:center; gap:8px; background:var(--panel2); border:1px solid var(--line); padding:8px 14px; border-radius:10px; font-weight:700; }
+  .balance .coin{ color:#fbbf24; }
+
+  /* LAYOUT */
+  main{ max-width:1200px; margin:0 auto; padding:24px 20px 60px; }
+  .hero{ text-align:center; padding:26px 0 8px; }
+  .hero h1{ font-size:34px; font-weight:800; }
+  .hero h1 span{ background:linear-gradient(90deg,var(--neon),var(--neon2)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .hero p{ color:var(--dim); margin-top:8px; font-size:15px; }
+  .badge{ display:inline-block; margin-top:12px; font-size:12px; color:var(--neon2); border:1px solid var(--neon2); padding:4px 12px; border-radius:20px; }
+
+  .grid{ display:grid; gap:16px; }
+  .cases{ grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); margin-top:26px; }
+  .card{ background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:16px; transition:.25s; position:relative; overflow:hidden; }
+  .card:hover{ transform:translateY(-4px); border-color:var(--neon); box-shadow:0 10px 30px rgba(124,92,255,.15); }
+  .case-img{ height:120px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:52px; background:linear-gradient(145deg,#1b1f2e,#0e1018); border:1px solid var(--line); }
+  .card h3{ font-size:16px; margin:12px 0 4px; }
+  .card .price{ color:var(--dim); font-size:13px; display:flex; align-items:center; gap:6px; }
+  .btn{ width:100%; margin-top:12px; padding:11px; border:none; border-radius:10px; font-weight:700; cursor:pointer; font-family:inherit; font-size:14px;
+        background:linear-gradient(90deg,var(--neon),var(--neon2)); color:#fff; transition:.2s; }
+  .btn:hover{ filter:brightness(1.15); }
+  .btn:disabled{ opacity:.4; cursor:not-allowed; filter:none; }
+  .btn.ghost{ background:var(--panel2); border:1px solid var(--line); color:var(--txt); }
+
+  /* ROULETTE */
+  .modal{ position:fixed; inset:0; background:rgba(5,6,10,.9); display:none; align-items:center; justify-content:center; z-index:100; padding:20px; }
+  .modal.open{ display:flex; }
+  .modal-box{ background:var(--panel); border:1px solid var(--line); border-radius:20px; width:100%; max-width:760px; padding:26px; }
+  .modal-box h2{ font-size:20px; margin-bottom:16px; text-align:center; }
+  .roulette{ position:relative; overflow:hidden; border:1px solid var(--line); border-radius:14px; background:#0d0f16; padding:16px 0; }
+  .track{ display:flex; gap:12px; transition:transform 6s cubic-bezier(.08,.72,.12,1); }
+  .slot{ flex:0 0 110px; height:130px; border-radius:12px; background:var(--panel2); border:2px solid var(--line);
+         display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; }
+  .slot .ico{ font-size:38px; }
+  .slot .nm{ font-size:10px; color:var(--dim); text-align:center; padding:0 4px; }
+  .slot.common{ border-color:var(--common); }
+  .slot.rare{ border-color:var(--rare); box-shadow:0 0 14px rgba(59,130,246,.3); }
+  .slot.epic{ border-color:var(--epic); box-shadow:0 0 18px rgba(168,85,247,.4); }
+  .slot.legend{ border-color:var(--legend); box-shadow:0 0 22px rgba(245,158,11,.5); }
+  .slot.mythic{ border-color:var(--mythic); box-shadow:0 0 26px rgba(239,68,68,.6); }
+  .pointer{ position:absolute; top:0; bottom:0; left:50%; width:3px; background:linear-gradient(180deg,var(--neon2),var(--neon)); z-index:5;
+            box-shadow:0 0 16px var(--neon2); transform:translateX(-50%); }
+  .pointer::before,.pointer::after{ content:''; position:absolute; left:50%; transform:translateX(-50%); border:7px solid transparent; }
+  .pointer::before{ top:-2px; border-top-color:var(--neon2); }
+  .pointer::after{ bottom:-2px; border-bottom-color:var(--neon2); }
+  .result{ text-align:center; margin-top:18px; min-height:26px; font-weight:700; }
+  .result.win{ color:#4ade80; }
+  .result.lose{ color:var(--dim); }
+
+  /* INVENTORY */
+  .inv-grid{ grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); margin-top:20px; }
+  .item{ background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px; text-align:center; position:relative; }
+  .item .ico{ font-size:40px; }
+  .item .nm{ font-size:12px; margin-top:8px; }
+  .item .rl{ font-size:10px; margin-top:6px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; }
+  .r-common{ color:var(--common); } .r-rare{ color:var(--rare); } .r-epic{ color:var(--epic); }
+  .r-legend{ color:var(--legend); } .r-mythic{ color:var(--mythic); }
+  .item .val{ font-size:11px; color:#fbbf24; margin-top:4px; }
+
+  .section{ display:none; }
+  .section.active{ display:block; }
+  .section-title{ font-size:22px; font-weight:800; margin:30px 0 6px; }
+  .section-sub{ color:var(--dim); font-size:14px; }
+
+  .empty{ text-align:center; color:var(--dim); padding:50px 0; }
+
+  /* BONUS + STATS */
+  .row{ display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:26px; }
+  .panel{ background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:20px; }
+  .panel h3{ font-size:16px; margin-bottom:12px; }
+  .stat{ display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--line); font-size:14px; }
+  .stat:last-child{ border:none; }
+  .stat b{ color:var(--neon2); }
+  @media(max-width:700px){ .row{grid-template-columns:1fr;} .nav-links{display:none;} .hero h1{font-size:26px;} }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="nav">
+    <div class="logo">Case<span>Lab</span></div>
+    <div class="nav-links">
+      <button class="active" data-tab="cases">Кейсы</button>
+      <button data-tab="inv">Инвентарь</button>
+      <button data-tab="profile">Профиль</button>
+    </div>
+    <div class="balance"><span class="coin">🪙</span><span id="balance">1000</span></div>
+  </div>
+</header>
+
+<main>
+  <!-- CASES -->
+  <section class="section active" id="sec-cases">
+    <div class="hero">
+      <h1>Открывай кейсы и <span>собирай коллекцию</span></h1>
+      <p>Демо-режим: виртуальные монеты, никаких реальных денег и выводов.</p>
+      <div class="badge">Играй бесплатно • Без ставок • Только фан</div>
+    </div>
+
+    <div class="grid cases" id="cases"></div>
+
+    <div class="row">
+      <div class="panel">
+        <h3>🎁 Ежедневный бонус</h3>
+        <p style="color:var(--dim); font-size:13px; margin-bottom:12px;">Заходи каждый день и получай монеты.</p>
+        <button class="btn" id="dailyBtn">Забрать +300 🪙</button>
+      </div>
+      <div class="panel">
+        <h3>📊 Твоя статистика</h3>
+        <div class="stat"><span>Открыто кейсов</span><b id="sOpened">0</b></div>
+        <div class="stat"><span>Потрачено монет</span><b id="sSpent">0</b></div>
+        <div class="stat"><span>Лучший дроп</span><b id="sBest">—</b></div>
+        <div class="stat"><span>Предметов в коллекции</span><b id="sItems">0</b></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- INVENTORY -->
+  <section class="section" id="sec-inv">
+    <div class="section-title">🎒 Инвентарь</div>
+    <div class="section-sub">Все предметы, которые ты выбил. Их можно продать обратно за монеты.</div>
+    <div class="grid inv-grid" id="inventory"></div>
+  </section>
+
+  <!-- PROFILE -->
+  <section class="section" id="sec-profile">
+    <div class="section-title">👤 Профиль</div>
+    <div class="section-sub">Демо-аккаунт. Здесь мог бы быть вход через аккаунт, статистика сезона и друзья.</div>
+    <div class="row" style="margin-top:20px;">
+      <div class="panel">
+        <h3>Аккаунт</h3>
+        <div class="stat"><span>Игрок</span><b>Guest_001</b></div>
+        <div class="stat"><span>Уровень</span><b id="pLevel">1</b></div>
+        <div class="stat"><span>Опыт</span><b id="pXp">0 / 10</b></div>
+      </div>
+      <div class="panel">
+        <h3>Достижения</h3>
+        <div class="stat"><span>Первый кейс</span><b id="a1">—</b></div>
+        <div class="stat"><span>Легендарный дроп</span><b id="a2">—</b></div>
+        <div class="stat"><span>Собрано 10 предметов</span><b id="a3">—</b></div>
+      </div>
+    </div>
+    <div class="panel" style="margin-top:16px;">
+      <h3>⚙️ Управление демо</h3>
+      <p style="color:var(--dim); font-size:13px; margin-bottom:12px;">Сбросить прогресс и начать заново.</p>
+      <button class="btn ghost" id="resetBtn">Сбросить прогресс</button>
+    </div>
+  </section>
+</main>
+
+<!-- ROULETTE MODAL -->
+<div class="modal" id="modal">
+  <div class="modal-box">
+    <h2 id="modalTitle">Открытие кейса</h2>
+    <div class="roulette">
+      <div class="pointer"></div>
+      <div class="track" id="track"></div>
+    </div>
+    <div class="result" id="result"></div>
+    <button class="btn ghost" style="margin-top:16px;" id="closeBtn">Закрыть</button>
+  </div>
+</div>
+
+<script>
+/* ---------- ДАННЫЕ ---------- */
+const RARITY = {
+  common: { name:'Обычный',   color:'#8b92a8', weight:60 },
+  rare:   { name:'Редкий',    color:'#3b82f6', weight:25 },
+  epic:   { name:'Эпический', color:'#a855f7', weight:10 },
+  legend: { name:'Легенда',   color:'#f59e0b', weight:4  },
+  mythic: { name:'Мифик',     color:'#ef4444', weight:1  }
+};
+
+const POOL = [
+  { n:'Ржавый нож',        i:'🗡️', r:'common', v:60  },
+  { n:'Тактический шлем',  i:'⛑️', r:'common', v:70  },
+  { n:'Старый пистолет',   i:'🔫', r:'common', v:80  },
+  { n:'Камуфляж',          i:'🥾', r:'common', v:55  },
+  { n:'Синий хлад',        i:'🔹', r:'rare',   v:180 },
+  { n:'Неоновый АК',       i:'🔷', r:'rare',   v:220 },
+  { n:'Керамбит лёд',      i:'❄️', r:'rare',   v:260 },
+  { n:'Фиолетовый Магнум', i:'💜', r:'epic',   v:520 },
+  { n:'Космический AWP',   i:'🔮', r:'epic',   v:610 },
+  { n:'Золотой десерт',    i:'🌟', r:'legend', v:1400},
+  { n:'Красный дракон',    i:'🐉', r:'legend', v:1700},
+  { n:'МИФИЧЕСКИЙ МЕЧ',    i:'⚔️', r:'mythic', v:5000}
+];
+
+const CASES = [
+  { id:'basic',  name:'Стартовый',  ico:'🎁', price:100, pool:['common','rare'] },
+  { id:'neon',   name:'Неоновый',   ico:'🟪', price:250, pool:['common','rare','epic'] },
+  { id:'space',  name:'Космический',ico:'🚀', price:500, pool:['rare','epic','legend'] },
+  { id:'dragon', name:'Драконий',   ico:'🐲', price:1000,pool:['epic','legend','mythic'] }
+];
+
+/* ---------- СОСТОЯНИЕ ---------- */
+let S = JSON.parse(localStorage.getItem('caselab')||'null') || {
+  balance:1000, opened:0, spent:0, items:[], xp:0, level:1, lastDaily:null
+};
+function save(){ localStorage.setItem('caselab', JSON.stringify(S)); }
+
+/* ---------- УТИЛИТЫ ---------- */
+function pickItem(allowedRarities){
+  const list = POOL.filter(p=>allowedRarities.includes(p.r));
+  const total = list.reduce((s,p)=>s+RARITY[p.r].weight,0);
+  let r = Math.random()*total;
+  for(const p of list){ r -= RARITY[p.r].weight; if(r<=0) return p; }
+  return list[list.length-1];
+}
+function refresh(){
+  document.getElementById('balance').textContent = S.balance;
+  document.getElementById('sOpened').textContent = S.opened;
+  document.getElementById('sSpent').textContent = S.spent.toLocaleString('ru');
+  document.getElementById('sItems').textContent = S.items.length;
+  const best = S.items.reduce((m,x)=> x.v>(m?m.v:0)?x:m, null);
+  document.getElementById('sBest').textContent = best ? `${best.i} ${best.n}` : '—';
+  document.getElementById('pLevel').textContent = S.level;
+  document.getElementById('pXp').textContent = `${S.xp} / ${S.level*10}`;
+  document.getElementById('a1').textContent = S.opened>0?'✅ Открыто':'—';
+  document.getElementById('a2').textContent = S.items.some(x=>x.r==='legend'||x.r==='mythic')?'✅ Есть':'—';
+  document.getElementById('a3').textContent = S.items.length>=10?'✅ Готово':'—';
+  renderCases(); renderInv(); save();
+}
+
+/* ---------- КЕЙСЫ ---------- */
+function renderCases(){
+  const box = document.getElementById('cases');
+  box.innerHTML = CASES.map(c=>`
+    <div class="card">
+      <div class="case-img">${c.ico}</div>
+      <h3>${c.name}</h3>
+      <div class="price">🪙 ${c.price} монет</div>
+      <button class="btn" data-case="${c.id}" ${S.balance<c.price?'disabled':''}>
+        ${S.balance<c.price?'Мало монет':'Открыть'}
+      </button>
+    </div>`).join('');
+  box.querySelectorAll('[data-case]').forEach(b=>
+    b.onclick = ()=> openCase(CASES.find(x=>x.id===b.dataset.case)));
+}
+
+/* ---------- ОТКРЫТИЕ ---------- */
+function openCase(c){
+  if(S.balance < c.price) return;
+  S.balance -= c.price; S.spent += c.price; S.opened++;
+  const prize = pickItem(c.pool);
+
+  // строим ленту
+  const slots = [];
+  const winIdx = 38;
+  for(let i=0;i<46;i++){
+    const it = (i===winIdx) ? prize : pickItem(c.pool);
+    slots.push(it);
+  }
+  const track = document.getElementById('track');
+  track.style.transition='none';
+  track.style.transform='translateX(0)';
+  track.innerHTML = slots.map(it=>`
+    <div class="slot ${it.r}"><div class="ico">${it.i}</div><div class="nm">${it.n}</div></div>`).join('');
+
+  document.getElementById('modalTitle').textContent = 'Открытие: '+c.name;
+  document.getElementById('result').textContent = '';
+  document.getElementById('result').className='result';
+  document.getElementById('closeBtn').disabled = true;
+  document.getElementById('modal').classList.add('open');
+
+  const slotW = 122, boxW = track.parentElement.clientWidth;
+  const target = -(winIdx*slotW) + boxW/2 - 55 + (Math.random()*40-20);
+
+  requestAnimationFrame(()=>{
+    track.style.transition='transform 6s cubic-bezier(.08,.72,.12,1)';
+    track.style.transform = `translateX(${target}px)`;
+  });
+
+  setTimeout(()=>{
+    const item = {...prize};
+    S.items.push(item);
+    S.xp += 1;
+    if(S.xp >= S.level*10){ S.xp=0; S.level++; }
+
+    const res = document.getElementById('result');
+    res.textContent = `Выпало: ${item.i} ${item.n} (${RARITY[item.r].name}) — ${item.v} 🪙`;
+    res.className = 'result win';
+    document.getElementById('closeBtn').disabled = false;
+    document.getElementById('balance').textContent = S.balance;
+    refresh();
+  }, 6200);
+}
+
+/* ---------- ИНВЕНТАРЬ ---------- */
+function renderInv(){
+  const box = document.getElementById('inventory');
+  if(!S.items.length){ box.innerHTML = '<div class="empty" style="grid-column:1/-1;">Инвентарь пуст. Открой первый кейс!</div>'; return; }
+  box.innerHTML = S.items.map((it,idx)=>`
+    <div class="item">
+      <div class="ico">${it.i}</div>
+      <div class="nm">${it.n}</div>
+      <div class="rl r-${it.r}">${RARITY[it.r].name}</div>
+      <div class="val">🪙 ${it.v}</div>
+      <button class="btn ghost" style="margin-top:10px;font-size:12px;padding:8px;" data-sell="${idx}">Продать</button>
+    </div>`).join('');
+  box.querySelectorAll('[data-sell]').forEach(b=> b.onclick = ()=>{
+    const i = +b.dataset.sell;
+    S.balance += S.items[i].v;
+    S.items.splice(i,1);
+    refresh();
+  });
+}
+
+/* ---------- НАВИГАЦИЯ ---------- */
+document.querySelectorAll('.nav-links button').forEach(b=> b.onclick = ()=>{
+  document.querySelectorAll('.nav-links button').forEach(x=>x.classList.remove('active'));
+  b.classList.add('active');
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.getElementById('sec-'+b.dataset.tab).classList.add('active');
+});
+
+/* ---------- БОНУС ---------- */
+document.getElementById('dailyBtn').onclick = ()=>{
+  const today = new Date().toDateString();
+  if(S.lastDaily === today){ alert('Сегодня бонус уже получен. Заходи завтра!'); return; }
+  S.balance += 300; S.lastDaily = today; refresh();
+  alert('+300 🪙 начислено!');
+};
+
+/* ---------- ПРОЧЕЕ ---------- */
+document.getElementById('closeBtn').onclick = ()=> document.getElementById('modal').classList.remove('open');
+document.getElementById('resetBtn').onclick = ()=>{
+  if(confirm('Сбросить весь прогресс?')){
+    S = { balance:1000, opened:0, spent:0, items:[], xp:0, level:1, lastDaily:null };
+    refresh();
+  }
+};
+
+refresh();
+</script>
+</body>
+</html>
